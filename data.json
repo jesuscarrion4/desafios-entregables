@@ -1,0 +1,11 @@
+[
+  {
+    "title": "Cafe Americano",
+    "description": "Granos molidos",
+    "price": 3.99,
+    "thumbnail": "img/cafe-img.jpg",
+    "code": "5678",
+    "stock": 5,
+    "id": 1
+  }
+]
