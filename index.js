@@ -12,24 +12,15 @@ class ProductManager {
         }
 
     const productExists = this.products.findIndex((product) =>  product.code === data.code)
-
     if (productExists !== -1) {
         return "error: codigo ya esta en uso"
     }
 
-    const product ={
-        id: this.products.length +1,
-        title: data.title,
-        description: data.description, 
-        price: data.price,
-        thumbnail: data.thumbnail, 
-        code: data.code, 
-        stock: data.stock, 
-    }
+    product.id = this.products.length + 1;
+    this.products.push(product);
 
-    this.products.push(product)
-
-    return product
+    this.guardarProductos();
+    console.log("se ha agregado correctamente");
 
 
     }
@@ -150,7 +141,7 @@ manager.getProductById(1)
   });
 
 manager.updateProduct(1, {
-  title: "Cafe Americano",
+  title: "Cafe",
   description: "Granos molidos",
   price: 3.99,
   thumbnail: "img/cafe-img.jpg",
