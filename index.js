@@ -1,152 +1,172 @@
 const fs = require('fs');
 
 class ProductManager {
-    constructor (path) {
-        this.products = []
+    constructor(path) {
+        this.products = [];
         this.path = path;
+        this.loadProducts();
     }
 
-    addProduct (data) {
-        if (!data.title || !data.description || data.price || data.thumbnail || data.code || data.stock ) {
-            return "campos no validos"
+    async loadProducts() {
+        this.products = await this.getProducts();
+        if (this.products.length === 0) {
+            this.productIdCounter = 1;
+        } else {
+            const lastProduct = this.products[this.products.length - 1];
+            this.productIdCounter = lastProduct.id + 1;
+        }
+    }
+
+    async addProduct(data) {
+        if (!data.title || !data.description || !data.price || !data.thumbnail || !data.code || !data.stock) {
+            return "campos no válidos";
         }
 
-    const productExists = this.products.findIndex((product) =>  product.code === data.code)
-    if (productExists !== -1) {
-        return "error: codigo ya esta en uso"
+        const productExists = this.products.some((product) => product.code === data.code);
+        if (productExists) {
+            return "error: código ya está en uso";
+        }
+
+        const newProduct = {
+            id: this.productIdCounter,
+            ...data
+        };
+        
+        this.products.push(newProduct);
+        this.productIdCounter++;
+        await this.guardarProductos();
+        console.log("se ha agregado correctamente");
     }
 
-    product.id = this.products.length + 1;
-    this.products.push(product);
-
-    this.guardarProductos();
-    console.log("se ha agregado correctamente");
-
-
-    }
-    getProducts () {
-        return new Promise((resolve, reject) => {
-            fs.readFile(this.path, 'utf8', (err, data) => {
-              if (err) {
-                console.error('Error al leer los productos:', err);
-                return reject(err);
-              }
-              if (data === '') {
-                return resolve([]);
-              }
-              const products = JSON.parse(data);
-              return resolve(products);
-            });
-          });
-    }
-
-    getProductById(id) {
-        return this.getProducts()
-      .then((products) => {
-        const product = products.find((product) => product.id === id);
-        return product;
-      })
-      .catch((e) => {
-        console.log('Error al obtener el producto:', e);
-        return e;
-      });
-    }
-    updateProduct(id, updateProduct) {
-        this.getProducts()
-          .then((products) => {
-            const productIndex = products.findIndex((product) => product.id === id);
-    
-            if (productIndex === -1) {
-              return;
+    async getProducts() {
+        try {
+            const data = await fs.promises.readFile(this.path, 'utf8');
+            if (data === '') {
+                return [];
             }
-    
-            products[productIndex].title = updateProduct.title;
-            products[productIndex].description = updateProduct.description;
-            products[productIndex].price = updateProduct.price;
-            products[productIndex].thumbnail = updateProduct.thumbnail;
-            products[productIndex].code = updateProduct.code;
-            products[productIndex].stock = updateProduct.stock;
-    
-            this.guardarProductos(products);
-            console.log('Producto actualizado');
-          })
-          .catch((e) => {
+            return JSON.parse(data);
+        } catch (err) {
+            console.error('Error al leer los productos:', err);
+            return [];
+        }
+    }
+
+    async getProductById(id) {
+        try {
+            const products = await this.getProducts();
+            const product = products.find((product) => product.id === id);
+            return product;
+        } catch (e) {
             console.log('Error al obtener el producto:', e);
-            return e;
-          });
-      }
-    
-      deleteProduct(id) {
+            throw e;
+        }
+    }
+
+    async updateProduct(id, updatedProduct) {
+        try {
+            const products = await this.getProducts();
+            const productIndex = products.findIndex((product) => product.id === id);
+
+            if (productIndex === -1) {
+                console.log('Producto no encontrado');
+                return;
+            }
+
+            if (updatedProduct.code !== products[productIndex].code && this.isCodeInUse(updatedProduct.code, products)) {
+                console.log('Error: El código ya está en uso por otro producto');
+                return;
+            }
+
+            products[productIndex] = {
+                ...products[productIndex],
+                ...updatedProduct
+            };
+
+            await this.guardarProductos(products);
+            console.log('Producto actualizado');
+        } catch (e) {
+            console.log('Error al obtener el producto:', e);
+        }
+    }
+
+    isCodeInUse(code, products) {
+        return products.some((product) => product.code === code);
+    }
+
+    async deleteProduct(id) {
         const productIndex = this.products.findIndex((p) => p.id === id);
         if (productIndex === -1) {
-          return console.log('Producto no encontrado');
+            return console.log('Producto no encontrado');
         }
-    
+
         this.products.splice(productIndex, 1);
-        this.guardarProductos();
-    
+        await this.guardarProductos();
+
         console.log('Producto eliminado');
-      }
-    
-      leerProductos() {
+    }
+
+    async guardarProductos(products) {
         try {
-          const data = fs.readFileSync(this.path, 'utf-8');
-          if (data === '') {
-            console.log(data);
-            return [];
-          }
-          return JSON.parse(data);
+            const data = JSON.stringify(products || this.products, null, 2);
+            await fs.promises.writeFile(this.path, data, 'utf-8');
+            console.log('Productos guardados correctamente');
         } catch (err) {
-          console.error('Error al leer los productos:', err);
-          return [];
+            console.log('Error al guardar los productos');
         }
-      }
-    
-      guardarProductos(products) {
-        try {
-          const data = JSON.stringify(products || this.products, null, 2);
-          fs.writeFileSync(this.path, data, 'utf-8');
-          console.log('Productos guardados correctamente');
-        } catch (err) {
-          console.log('Error al guardar los productos');
-        }
-      }
+    }
 }
 
-const manager = new ProductManager('./data.json');
+(async () => {
+    const manager = new ProductManager('./data.json');
 
-manager.addProduct({
-    title: "Cafe en granos",
-    description: "Americano",
-    price: 2.99,
-    thumbnail: "img/cafe.jpg",
-    code: "5678",
-    stock: 10,
-});
+    await manager.addProduct({
+        title: "Cafe en granos",
+        description: "Americano",
+        price: 2.99,
+        thumbnail: "img/cafe.jpg",
+        code: "5678",
+        stock: 10,
+    });
 
-manager.getProducts()
-  .then((products) => {
-    console.log(products);
-  })
-  .catch((err) => {
-    console.error('Error al obtener los productos:', err);
-  });
+    try {
+        const products = await manager.getProducts();
+        console.log(products);
 
-manager.getProductById(1)
-  .then((product) => {
-    console.log(product);
-  })
-  .catch((err) => {
-    console.error('Error al obtener el producto:', err);
-  });
+        const product = await manager.getProductById(1);
+        console.log(product);
 
-manager.updateProduct(1, {
-  title: "Cafe",
-  description: "Granos molidos",
-  price: 3.99,
-  thumbnail: "img/cafe-img.jpg",
-  code: "5678",
-  stock: 5,
-});
+        await manager.addProduct({
+            title: "Cafe",
+            description: "london",
+            price: 3.99,
+            thumbnail: "img/cafe.jpg",
+            code: "5564",
+            stock: 10,
+        });
 
-manager.deleteProduct(2);
+
+        await manager.deleteProduct(2);
+    } catch (err) {
+        console.error('Error:', err);
+    }
+    (async () => {
+      const manager = new ProductManager('./data.json');
+  
+      try {
+          // Crear un nuevo producto
+          await manager.addProduct({
+              title: "cafe americano",
+              description: "nuevo producto",
+              price: 3.99,
+              thumbnail: "img/nuevo_producto.jpg",
+              code: "9876",
+              stock: 5,
+          });
+  
+          const products = await manager.getProducts();
+          console.log("Lista de productos actualizada:", products);
+      } catch (err) {
+          console.error('Error:', err);
+      }
+  })();
+})();

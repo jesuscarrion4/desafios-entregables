@@ -1,11 +1,10 @@
 [
   {
-    "title": "Cafe",
-    "description": "Granos molidos",
-    "price": 3.99,
-    "thumbnail": "img/cafe-img.jpg",
-    "code": "5678",
-    "stock": 5,
-    "id": 1
+    "title": "Nuevo Producto",
+    "description": "Descripción del nuevo producto",
+    "price": 9.99,
+    "thumbnail": "img/nuevo_producto.jpg",
+    "code": "9876",
+    "stock": 5
   }
 ]
